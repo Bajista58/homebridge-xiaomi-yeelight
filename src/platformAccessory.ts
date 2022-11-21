@@ -1,4 +1,7 @@
-import { CharacteristicValue } from 'homebridge';
+import {
+  AdaptiveLightingControllerMode,
+  CharacteristicValue,
+} from 'homebridge';
 import { XiaomiYeelightPlatform } from './platform';
 import miio from 'miio-yeelight-x';
 import { color } from 'abstract-things/values';
@@ -122,6 +125,16 @@ export class Light {
               this.lightCharacteristics.brightness.updateValue(bright);
             }
           });
+        }
+
+        if (colorTempSupport && brightnessSupport) {
+          this.lightCharacteristics.adaptive =
+            new platform.api.hap.AdaptiveLightingController(service, {
+              controllerMode: AdaptiveLightingControllerMode.AUTOMATIC,
+            });
+          this.accessory.configureController(
+            this.lightCharacteristics.adaptive,
+          );
         }
 
         this.connection.on('powerChanged', (power) => {
@@ -281,6 +294,10 @@ export class Light {
 
   async setNightMode(value: CharacteristicValue) {
     if (value) {
+      if (this.lightCharacteristics.adaptive?.isAdaptiveLightingActive()) {
+        this.lightCharacteristics.adaptive.disableAdaptiveLighting();
+      }
+
       await this.connection.call('set_scene', ['nightlight', 10]);
       const nightLightColor = color.rgb(255, 152, 0);
 

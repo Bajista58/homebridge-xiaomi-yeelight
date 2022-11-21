@@ -1,5 +1,6 @@
 import {
   AccessoryName,
+  AdaptiveLightingController,
   API,
   Characteristic,
   DynamicPlatformPlugin,
@@ -18,6 +19,7 @@ export interface LightCharacteristics {
   hue?: Characteristic;
   sat?: Characteristic;
   nightMode?: Characteristic;
+  adaptive?: AdaptiveLightingController;
 }
 
 export interface MiLightSettings {
