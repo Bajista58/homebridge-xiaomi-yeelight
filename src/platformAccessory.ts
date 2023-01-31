@@ -1,6 +1,6 @@
-import { CharacteristicValue } from 'homebridge';
+import { CharacteristicValue, Service } from 'homebridge';
 import { XiaomiYeelightPlatform } from './platform';
-import miio from 'miio-yeelight-x';
+import miio from '@svyatogor/miio-yeelight-x';
 import { LightCharacteristics, MiLightPlatformAccesory } from './models';
 
 /**
@@ -117,29 +117,37 @@ export class Light {
         }
 
         if (nightmodeSupport) {
-          const nightModeSwitch =
+          const moonlight =
             this.accessory.getService(
-              `${accessory.context.device.name} Night Mode`,
+              `${accessory.context.device.name} Moonlight`,
             ) ||
             this.accessory.addService(
-              this.platform.Service.Switch,
-              `${accessory.context.device.name} Night Mode`,
+              this.platform.Service.Lightbulb,
+              `${accessory.context.device.name} Moonlight`,
+              accessory.UUID,
+              'moonlight'
             );
 
-          this.lightCharacteristics.nightMode = nightModeSwitch
+          this.lightCharacteristics.moonlight = moonlight
             .getCharacteristic(this.platform.Characteristic.On)
-            .onSet(this.setNightMode.bind(this));
+            .onSet(this.setMoonLight.bind(this));
 
-          this.connection.on('nightModeChanged', (x) => {
-            if (this.lightCharacteristics.nightMode) {
-              this.lightCharacteristics.nightMode.updateValue(x);
-            }
+          this.lightCharacteristics.moonlightBrightness = moonlight
+            .getCharacteristic(this.platform.Characteristic.Brightness)
+            .onSet(this.setMoonLightBrightness.bind(this));
+
+          this.connection.on('modeChanged', (mode) => {
+            this.lightCharacteristics.moonlight?.updateValue(mode === 'moonlight');
+          });
+
+          this.connection.on('updateMoonlightBrightness', (bright) => {
+            this.lightCharacteristics.moonlightBrightness?.updateValue(bright);
           });
         }
 
-        this.connection.on('powerChanged', (power) =>
-          this.lightCharacteristics.power.updateValue(power),
-        );
+        this.connection.on('powerChanged', (power) => {
+          this.lightCharacteristics.power.updateValue(power)
+        });
       })
       .catch((e) => this.platform.log.error(e));
 
@@ -264,15 +272,17 @@ export class Light {
     }
   }
 
-  async setNightMode(value: CharacteristicValue) {
+  async setMoonLight(value: CharacteristicValue) {
     if (value) {
-      await this.connection.nightMode(1);
+      await this.connection.changeMode('moonlight')
     } else {
-      setTimeout(
-        () => this.lightCharacteristics.nightMode?.updateValue(true),
-        0,
-      );
+      await this.connection.setPower(false)
     }
+  }
+
+
+  async setMoonLightBrightness(value: CharacteristicValue) {
+    this.setBrightness(value)
   }
 
   async startColorFlow() {
